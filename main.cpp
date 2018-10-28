@@ -27,13 +27,14 @@ char* Read_text(FILE* input, int* Quantity_enters,
 
 /*!
     Function to parsing buffer by strings
+
     @param input - file with text
     @param quantity_enters - quantity of strings
     @param size_buffer - size of buffer
 
     @return Pointer to array of strings
 */
-char** Create_pointers(char* buffer,
+char** Create_list_strings(char* buffer,
                         int quantity_enters, int size_buffer);
 
 /*!
@@ -47,6 +48,9 @@ int String_comparision(const void* first_str,
 int str_comparision(const void* first_str,
                           const void* second_str);
 
+char* reassembly_buffer(char* buffer,
+                         int* Quantity_enters, int long_file);
+
 
 int main()
 {
@@ -57,7 +61,12 @@ int main()
     int quantity_enters = 0;
     int size_buffer = 0;
     char* buffer = Read_text(input, &quantity_enters, &size_buffer);
-    assert(buffer);
+    buffer = reassembly_buffer(buffer, &quantity_enters, size_buffer);
+    //assert(buffer);
+    if(buffer == nullptr)
+    {
+        return 1;
+    }
     if(quantity_enters < 0)
     {
         printf("ERROR in QUANTITIES of enters");
@@ -72,48 +81,42 @@ int main()
         std::cout << (int)buffer[i] << " ";
     }*/
 
-    char** pointers = Create_pointers(buffer, quantity_enters,
+    char** list_strings = Create_list_strings(buffer, quantity_enters,
                                        size_buffer);
-    assert(pointers);
+    //assert(list_strings);
+    if(list_strings == nullptr)
+    {
+        return 1;
+    }
     for(int i = 0; i < quantity_enters; i++)
     {
-        assert(pointers[i]);
+        assert(list_strings[i]);
     }
-    qsort(pointers, quantity_enters, sizeof(char*),
+    qsort(list_strings, quantity_enters, sizeof(char*),
            str_comparision);
     for(int i = 0; i < quantity_enters; i++)
     {
-        assert(pointers[i]);
+        assert(list_strings[i]);
     }
 
     for(int i = 0; i < quantity_enters; i++)
     {
-        fputs(pointers[i], output);
+        fputs(list_strings[i], output);
         fputc('\n', output);
-        /*char cur_char = *(pointers[i]);
 
-        int j = 0;
-        while(cur_char != '\n' && (fputc(cur_char, output) != EOF))
-        {
-            //std::cout << cur_char << "\n";
-            j++;
-            cur_char = *(pointers[i] + j);
-        }
-        j = fputc('\n', output);
-
-        assert(j != EOF);*/
     }
     fputc('\n', output);
-    qsort(pointers, quantity_enters, sizeof(char*),
+    qsort(list_strings, quantity_enters, sizeof(char*),
            String_comparision);
     for(int i = 0; i < quantity_enters; i++)
     {
-        assert(pointers[i]);
+        assert(list_strings[i]);
     }
 
     for(int i = 0; i < quantity_enters; i++)
     {
-        fputs(pointers[i], output);
+
+        fputs(list_strings[i], output);
         fputc('\n', output);
     }
     return 0;
@@ -124,12 +127,25 @@ char* Read_text(FILE* input, int* Quantity_enters, int* Size_buffer)
     assert(Quantity_enters);
     assert(Size_buffer);
     int end_file = 0;
-    fseek(input, 0, SEEK_END);
+
+    int count_fseek = fseek(input, 0, SEEK_END);
+    if(count_fseek)
+    {
+        printf("ERROR with fseek in the end");
+        return nullptr;
+    }
     end_file = ftell(input);
 
-    fseek(input, 0, SEEK_SET);
+
+    count_fseek = fseek(input, 0, SEEK_SET);
+    if(count_fseek)
+    {
+        printf("ERROR with fseek in the start");
+        return nullptr;
+    }
     int start_file = ftell(input);
-    if(end_file <= start_file)
+    if(end_file <= start_file ||
+        end_file == -1 || start_file == -1)
     {
         printf("ERROR with start and end of file");
         return nullptr;
@@ -144,11 +160,15 @@ char* Read_text(FILE* input, int* Quantity_enters, int* Size_buffer)
     *Size_buffer = long_file;
     assert(end_file);
 
-
     char* buffer = (char*)calloc(long_file+1, sizeof(char));
     fread(buffer, long_file, 1, input);
 
-    for(int i = 0; i < long_file; i++)
+    return buffer;
+}
+
+char* reassembly_buffer(char* buffer, int* Quantity_enters, int long_file)
+{
+        for(int i = 0; i < long_file; i++)
     {
         //std::cout << (int)buffer[i]<< *(Quantity_enters) << "\n";
         if(buffer[i] == '\n')
@@ -164,18 +184,18 @@ char* Read_text(FILE* input, int* Quantity_enters, int* Size_buffer)
     return buffer;
 }
 
-char** Create_pointers(char* buffer, int quantity_enters,
+char** Create_list_strings(char* buffer, int quantity_enters,
                         int size_buffer)
 {
     if(quantity_enters < 0 || size_buffer <= 0)
     {
-        printf("ERROR with parameters in Create_pointers");
+        printf("ERROR with parameters in Create_list_strings");
         return nullptr;
     }
-    char** pointers_res = (char**)calloc(quantity_enters,
+    char** list_strings_res = (char**)calloc(quantity_enters,
                                   sizeof(char*));
-    assert(pointers_res);
-    pointers_res[0] = buffer;
+    assert(list_strings_res);
+    list_strings_res[0] = buffer;
     int j = 1;
     for(unsigned int i = 1; i < size_buffer; i++)
     {
@@ -183,7 +203,7 @@ char** Create_pointers(char* buffer, int quantity_enters,
         if(cur_char == '\0' &&
             buffer[i+1] != '\0' && (i+1) < size_buffer)
         {
-            pointers_res[j] = buffer + i + 1;
+            list_strings_res[j] = buffer + i + 1;
             j++;
         }
     }
@@ -193,7 +213,7 @@ char** Create_pointers(char* buffer, int quantity_enters,
          << "\nComes: " << j << std::endl;
 
 
-    return pointers_res;
+    return list_strings_res;
 }
 
 
@@ -241,6 +261,7 @@ int String_comparision(const void* first_str_void,
     printf("ERROR with func in qsort");
     return 0;
 }
+
 
 
 
